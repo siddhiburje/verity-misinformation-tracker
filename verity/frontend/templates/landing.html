@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verity — track how a claim changes</title>
+<meta name="description" content="Verity traces how a claim mutates across sources and time: paste text, drop in a screenshot, or pull live news, and watch the narrative's revision history unfold.">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+<style>
+  body { overflow-x: hidden; }
+
+  /* ---------- Nav ---------- */
+  .nav {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(17, 20, 28, 0.86);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--ink-800);
+  }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark { width: 30px; height: 30px; flex-shrink: 0; }
+  .brand-word { font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; color: var(--text-ondark); }
+  .nav-links { display: flex; align-items: center; gap: 30px; }
+  .nav-links a.navlink { font-size: 0.9rem; color: var(--text-ondark-muted); transition: color 0.15s; }
+  .nav-links a.navlink:hover { color: var(--text-ondark); }
+  .nav-cta { display: flex; align-items: center; gap: 14px; }
+
+  /* ---------- Hero ---------- */
+  .hero { position: relative; padding: 92px 0 70px; }
+  .hero-grid {
+    display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 50px; align-items: center;
+    position: relative; z-index: 1;
+  }
+  .eyebrow-line { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--signal-red); box-shadow: 0 0 0 4px var(--signal-red-soft); }
+  .eyebrow-line span { font-size: 0.85rem; color: var(--text-ondark-muted); }
+  .hero h1 { margin-bottom: 20px; }
+  .hero h1 em { font-style: italic; color: var(--text-ondark); }
+  .hero-cta { display: flex; align-items: center; gap: 18px; margin-top: 34px; }
+  .hero-note { font-size: 0.82rem; color: var(--text-ondark-muted); margin-top: 16px; }
+
+  /* ---------- Hero demo: two documents + connecting thread ---------- */
+  .demo-wrap { position: relative; height: 430px; }
+  .demo-doc { position: absolute; width: 300px; }
+  .demo-doc.origin { top: 6px; left: 6px; z-index: 2; }
+  .demo-doc.variant { bottom: 4px; right: 0; z-index: 2; width: 260px; }
+  .demo-doc .doc { padding: 20px; }
+  .demo-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .demo-claim-text { font-family: var(--font-display); font-size: 1rem; line-height: 1.5; }
+  .strike-part { position: relative; }
+  .strike-part::after {
+    content: ""; position: absolute; left: -2px; right: -2px; top: 50%;
+    height: 2px; background: var(--signal-red);
+    transform: scaleX(0); transform-origin: left;
+    animation: strike-in 0.5s var(--ease) forwards; animation-delay: 1.6s;
+  }
+  @keyframes strike-in { to { transform: scaleX(1); } }
+  .correction {
+    font-family: var(--font-mono); font-size: 0.76rem; color: var(--signal-red);
+    margin-top: 10px; opacity: 0; transform: translateY(4px);
+    animation: fade-up 0.5s var(--ease) forwards; animation-delay: 2.05s;
+  }
+  @keyframes fade-up { to { opacity: 1; transform: none; } }
+  .thread-svg { position: absolute; inset: 0; z-index: 1; overflow: visible; }
+  .thread-path {
+    fill: none; stroke: var(--signal-red); stroke-width: 1.5; stroke-dasharray: 4 5;
+    stroke-dashoffset: 260; opacity: 0.85;
+    animation: draw-thread 1s var(--ease) forwards; animation-delay: 2.3s;
+  }
+  @keyframes draw-thread { to { stroke-dashoffset: 0; } }
+  .thread-pin { fill: var(--signal-red); opacity: 0; animation: fade-up 0.3s var(--ease) forwards; }
+  .thread-pin.p1 { animation-delay: 2.3s; }
+  .thread-pin.p2 { animation-delay: 3.2s; }
+
+  /* ---------- Sections ---------- */
+  .section-pad { padding: 96px 0; }
+  .section-head { max-width: 560px; margin-bottom: 52px; }
+  .section-kicker { font-family: var(--font-mono); font-size: 0.78rem; color: var(--signal-red); margin-bottom: 14px; display: block; }
+
+  /* ---------- Pipeline (real sequence -> numbering justified) ---------- */
+  .pipeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; background: var(--ink-800); border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--ink-800); }
+  .pipe-step { background: var(--ink-900); padding: 26px 18px; position: relative; }
+  .pipe-num { font-family: var(--font-mono); font-size: 0.72rem; color: var(--signal-red); display: block; margin-bottom: 14px; }
+  .pipe-step h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; color: var(--text-ondark); font-family: var(--font-body); }
+  .pipe-step p { font-size: 0.8rem; color: var(--text-ondark-muted); line-height: 1.5; }
+
+  /* ---------- Feature docs grid ---------- */
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feature-doc h3 { font-size: 1.05rem; margin-bottom: 10px; }
+  .feature-doc p { font-size: 0.88rem; }
+  .feature-icon { width: 34px; height: 34px; margin-bottom: 16px; color: var(--signal-red); }
+
+  /* ---------- Worked example (case board) ---------- */
+  .board-shell { background: var(--ink-900); border: 1px solid var(--ink-800); border-radius: 16px; padding: 44px; }
+  .board-note { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-ondark-muted); margin-bottom: 26px; display: block; }
+
+  /* ---------- CTA band ---------- */
+  .cta-band { background: var(--paper); color: var(--text-onpaper); border-radius: 20px; padding: 64px; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 40px; }
+  .cta-band h2 { color: var(--text-onpaper); }
+  .cta-band p { color: var(--text-onpaper-muted); margin-top: 12px; max-width: 46ch; }
+
+  footer { border-top: 1px solid var(--ink-800); padding: 40px 0; }
+  .footer-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: var(--text-ondark-muted); }
+
+  @media (max-width: 900px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .demo-wrap { height: 360px; margin-top: 20px; }
+    .pipeline { grid-template-columns: repeat(2, 1fr); }
+    .feature-grid { grid-template-columns: 1fr; }
+    .cta-band { flex-direction: column; text-align: left; padding: 40px 26px; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="7" fill="#B8412C"/>
+        <path d="M9 10.5 16 22 23 10.5" stroke="#F2ECE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M9 10.5h14" stroke="#F2ECE0" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 3.4"/>
+      </svg>
+      <span class="brand-word">Verity</span>
+    </div>
+    <div class="nav-links">
+      <a class="navlink" href="#pipeline">How it works</a>
+      <a class="navlink" href="#features">What you can track</a>
+      <a class="navlink" href="#example">A worked example</a>
+    </div>
+    <div class="nav-cta">
+      <a class="navlink" href="/auth">Log in</a>
+      <a class="btn btn-primary btn-sm" href="/auth?mode=signup">Start tracking</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container hero-grid">
+    <div>
+      <div class="eyebrow-line"><span class="eyebrow-dot"></span><span>NLP-based misinformation research tool</span></div>
+      <h1 class="t-display-1">Watch a claim<br>get <em>rewritten</em>,<br>one retelling at a time.</h1>
+      <p class="t-body">Verity pulls apart a piece of text, a screenshot, or a live news story and traces its lineage — which earlier claims it resembles, how the wording drifted, and where the narrative is headed next. Built for a research project on misinformation evolution, powered by real similarity scoring and clustering, not canned demo data.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="/auth?mode=signup">Start tracking</a>
+        <a class="navlink" href="#pipeline" style="font-size:0.9rem;">See how the pipeline works ↓</a>
+      </div>
+      <p class="hero-note">Free to use for this project · No credit card, just an account</p>
+    </div>
+
+    <div class="demo-wrap" aria-hidden="true">
+      <svg class="thread-svg" viewBox="0 0 300 430" preserveAspectRatio="none">
+        <path class="thread-path" d="M120,150 C 40,230 260,260 190,330" />
+        <circle class="thread-pin p1" cx="120" cy="150" r="4"/>
+        <circle class="thread-pin p2" cx="190" cy="330" r="4"/>
+      </svg>
+      <div class="demo-doc origin">
+        <div class="doc doc-lift">
+          <div class="demo-meta">
+            <span class="tag tag-neutral">Original · Feb 2021</span>
+          </div>
+          <p class="demo-claim-text on-paper">"COVID-19 vaccines <span class="strike-part">cause infertility</span> in women who receive them."</p>
+        </div>
+      </div>
+      <div class="demo-doc variant">
+        <div class="doc doc-lift">
+          <div class="demo-meta">
+            <span class="tag tag-red">Variant · +32 days</span>
+          </div>
+          <p class="demo-claim-text on-paper" style="font-size:0.92rem;">"Vaccination negatively affects a woman's fertility and ability to have children."</p>
+          <p class="correction">↳ 46% textual similarity · same narrative cluster</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="pipeline" class="section-pad">
+  <div class="container">
+    <div class="section-head">
+      <span class="section-kicker">the pipeline</span>
+      <h2 class="t-display-2">From a raw claim to a traced narrative</h2>
+    </div>
+    <div class="pipeline">
+      <div class="pipe-step"><span class="pipe-num">01</span><h4>Collect</h4><p>Paste text, drop an image, or search live news for a topic.</p></div>
+      <div class="pipe-step"><span class="pipe-num">02</span><h4>Extract</h4><p>OCR pulls text out of screenshots; NewsAPI pulls in recent articles.</p></div>
+      <div class="pipe-step"><span class="pipe-num">03</span><h4>Analyze</h4><p>Keywords, named entities, and sentiment are computed with real NLP.</p></div>
+      <div class="pipe-step"><span class="pipe-num">04</span><h4>Compare</h4><p>TF-IDF similarity scores the claim against everything already tracked.</p></div>
+      <div class="pipe-step"><span class="pipe-num">05</span><h4>Cluster</h4><p>Matching claims are grouped into a shared narrative, or flagged as new.</p></div>
+      <div class="pipe-step"><span class="pipe-num">06</span><h4>Visualize</h4><p>An interactive graph and timeline show how the story evolved.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="section-pad" style="background:var(--ink-900);">
+  <div class="container">
+    <div class="section-head">
+      <span class="section-kicker">what you can feed it</span>
+      <h2 class="t-display-2">Three ways in, one graph out</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="doc feature-doc">
+        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 4h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 4v5h5"/><path d="M8.5 12h7M8.5 15.5h5"/></svg>
+        <h3>Text &amp; claims</h3>
+        <p>Paste an article, a headline, or a single sentence you saw shared online. Verity runs it through the same pipeline as everything else in the dataset.</p>
+      </div>
+      <div class="doc feature-doc">
+        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="15" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 15l-5.5-5.5L4 19"/></svg>
+        <h3>Screenshots</h3>
+        <p>Upload a screenshot of a post or article. OCR extracts the text and shows you exactly what it read, before analysis starts.</p>
+      </div>
+      <div class="doc feature-doc">
+        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <h3>Live news topics</h3>
+        <p>Search a topic and Verity pulls recent coverage through NewsAPI, then ingests each article into the same evolving graph.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="example" class="section-pad">
+  <div class="container">
+    <div class="section-head">
+      <span class="section-kicker">a worked example</span>
+      <h2 class="t-display-2">One narrative, four retellings</h2>
+      <p class="t-body" style="margin-top:14px;">A simplified view of what the evolution graph looks like once a handful of related claims have been tracked — the same kind of graph you'll get from your own searches.</p>
+    </div>
+    <div class="board-shell">
+      <span class="board-note">cluster-fertility · 4 linked claims · Feb 2021 – Mar 2022</span>
+      <svg viewBox="0 0 900 260" width="100%" height="260" role="img" aria-label="Example graph showing four connected claim nodes forming one narrative cluster">
+        <line x1="90" y1="130" x2="300" y2="60" stroke="#3a4359" stroke-width="1.4" stroke-dasharray="3 4"/>
+        <line x1="90" y1="130" x2="300" y2="200" stroke="#3a4359" stroke-width="1.4" stroke-dasharray="3 4"/>
+        <line x1="300" y1="60" x2="560" y2="110" stroke="#3a4359" stroke-width="1.4" stroke-dasharray="3 4"/>
+        <line x1="300" y1="200" x2="560" y2="110" stroke="#3a4359" stroke-width="1.4" stroke-dasharray="3 4"/>
+        <line x1="560" y1="110" x2="790" y2="110" stroke="#b8412c" stroke-width="1.6"/>
+
+        <g>
+          <circle cx="90" cy="130" r="9" fill="#f2ece0" stroke="#b8412c" stroke-width="2"/>
+          <text x="90" y="160" fill="#e9e4d6" font-size="11" text-anchor="middle" font-family="JetBrains Mono, monospace">Feb 2021</text>
+          <text x="90" y="106" fill="#96a0b8" font-size="11" text-anchor="middle">Original claim</text>
+        </g>
+        <g>
+          <circle cx="300" cy="60" r="7" fill="#f2ece0" stroke="#3a4359" stroke-width="2"/>
+          <text x="300" y="40" fill="#96a0b8" font-size="11" text-anchor="middle">Source A retelling</text>
+          <text x="300" y="88" fill="#e9e4d6" font-size="11" text-anchor="middle" font-family="JetBrains Mono, monospace">May 2021</text>
+        </g>
+        <g>
+          <circle cx="300" cy="200" r="7" fill="#f2ece0" stroke="#3a4359" stroke-width="2"/>
+          <text x="300" y="224" fill="#96a0b8" font-size="11" text-anchor="middle">Source B retelling</text>
+          <text x="300" y="185" fill="#e9e4d6" font-size="11" text-anchor="middle" font-family="JetBrains Mono, monospace">Sep 2021</text>
+        </g>
+        <g>
+          <circle cx="560" cy="110" r="8" fill="#f2ece0" stroke="#ad8a3a" stroke-width="2"/>
+          <text x="560" y="90" fill="#96a0b8" font-size="11" text-anchor="middle">Merged narrative</text>
+          <text x="560" y="138" fill="#e9e4d6" font-size="11" text-anchor="middle" font-family="JetBrains Mono, monospace">Mar 2022</text>
+        </g>
+        <g>
+          <circle cx="790" cy="110" r="8" fill="#f2ece0" stroke="#b8412c" stroke-width="2"/>
+          <text x="790" y="90" fill="#e9e4d6" font-size="11" text-anchor="middle">Current claim</text>
+          <text x="790" y="138" fill="#96a0b8" font-size="11" text-anchor="middle" font-family="JetBrains Mono, monospace">your search</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad">
+  <div class="container">
+    <div class="cta-band">
+      <div>
+        <h2 class="t-display-2">Bring your own claim.</h2>
+        <p>Sign up, paste in something you've seen shared, and see where it fits.</p>
+      </div>
+      <a class="btn btn-ink" style="background:var(--ink-950);" href="/auth?mode=signup">Start tracking</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container footer-row">
+    <span>Verity — a college NLP research project</span>
+    <span>Built with Flask, scikit-learn &amp; spaCy</span>
+  </div>
+</footer>
+
+</body>
+</html>

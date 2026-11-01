@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in — Verity</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+<style>
+  body { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+
+  /* --- Left: ink pane with field-notes copy + abstract wave --- */
+  .pane-ink {
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 44px 56px; background: var(--ink-950);
+  }
+  .pane-ink .wave { position: absolute; inset: 0; z-index: 0; opacity: 0.55; }
+  .pane-ink .brand, .pane-ink .quote { position: relative; z-index: 1; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-word { font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; }
+  .quote { max-width: 420px; }
+  .quote p.big { font-family: var(--font-display); font-size: 1.7rem; line-height: 1.35; color: var(--text-ondark); }
+  .quote .attrib { margin-top: 18px; font-size: 0.85rem; color: var(--text-ondark-muted); font-family: var(--font-mono); }
+
+  /* --- Right: paper form pane --- */
+  .pane-form {
+    background: var(--paper); color: var(--text-onpaper);
+    display: flex; align-items: center; justify-content: center; padding: 40px;
+  }
+  .form-shell { width: 100%; max-width: 400px; }
+  .form-head { margin-bottom: 30px; }
+  .form-head h1 { color: var(--text-onpaper); font-size: 1.7rem; }
+  .form-head p { color: var(--text-onpaper-muted); margin-top: 8px; font-size: 0.92rem; }
+
+  .mode-switch { display: flex; gap: 4px; background: var(--paper-dim); padding: 4px; border-radius: var(--radius-sm); margin-bottom: 28px; }
+  .mode-switch button { flex: 1; height: 38px; border: none; background: transparent; border-radius: 6px; font-weight: 600; font-size: 0.86rem; color: var(--text-onpaper-muted); transition: all .15s var(--ease); }
+  .mode-switch button.active { background: #fff; color: var(--text-onpaper); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+
+  #loginForm, #signupForm { flex-direction: column; }
+
+  .password-wrap { position: relative; }
+  .password-wrap .input { padding-right: 42px; }
+  .toggle-pw { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-onpaper-muted); padding: 6px; }
+  .toggle-pw:hover { color: var(--text-onpaper); }
+
+  .form-alert {
+    display: none; align-items: flex-start; gap: 10px;
+    background: var(--signal-red-soft); border: 1px solid rgba(184,65,44,0.3); color: var(--signal-red);
+    border-radius: var(--radius-sm); padding: 12px 14px; font-size: 0.85rem; margin-bottom: 18px;
+  }
+  .form-alert.show { display: flex; }
+
+  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-onpaper-muted); margin-top: 26px; }
+  .back-link:hover { color: var(--text-onpaper); }
+
+  @media (max-width: 860px) {
+    body { grid-template-columns: 1fr; }
+    .pane-ink { display: none; }
+    .pane-form { min-height: 100vh; }
+  }
+</style>
+</head>
+<body>
+
+<div class="pane-ink">
+  <svg class="wave" viewBox="0 0 500 800" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,120 C 120,180 160,60 280,110 C 400,160 380,40 500,90 L500,0 L0,0 Z" fill="#1a2030"/>
+    <path d="M0,780 C 140,700 180,760 300,700 C 400,650 420,760 500,720 L500,800 L0,800 Z" fill="#1a2030"/>
+    <path d="M-20,420 C 100,380 180,470 280,410 C 380,350 420,450 520,400" stroke="#2a3245" stroke-width="1.5" fill="none"/>
+    <path d="M-20,470 C 100,430 180,520 280,460 C 380,400 420,500 520,450" stroke="#2a3245" stroke-width="1.5" fill="none"/>
+    <path d="M-20,520 C 100,480 180,570 280,510 C 380,450 420,550 520,500" stroke="#2a3245" stroke-width="1.5" fill="none"/>
+  </svg>
+  <a class="brand" href="/">
+    <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="7" fill="#B8412C"/>
+      <path d="M9 10.5 16 22 23 10.5" stroke="#F2ECE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M9 10.5h14" stroke="#F2ECE0" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 3.4"/>
+    </svg>
+    <span class="brand-word">Verity</span>
+  </a>
+  <div class="quote">
+    <p class="big">"Every claim has a paper trail. Verity's job is to find it."</p>
+    <p class="attrib">— project brief, AI-Based Misinformation Evolution Tracker</p>
+  </div>
+</div>
+
+<div class="pane-form">
+  <div class="form-shell">
+    <div class="form-head">
+      <h1 id="formTitle">Welcome back</h1>
+      <p id="formSubtitle">Log in to keep tracking your claims.</p>
+    </div>
+
+    <div class="mode-switch">
+      <button type="button" id="tabLogin" class="active">Log in</button>
+      <button type="button" id="tabSignup">Sign up</button>
+    </div>
+
+    <div id="formAlert" class="form-alert"><span id="formAlertText"></span></div>
+
+    <!-- LOGIN FORM -->
+    <form id="loginForm" class="stack-md">
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input class="input" type="email" id="loginEmail" autocomplete="email" placeholder="you@example.com" required>
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <div class="password-wrap">
+          <input class="input" type="password" id="loginPassword" autocomplete="current-password" placeholder="••••••••" required>
+          <button type="button" class="toggle-pw" data-target="loginPassword" aria-label="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="loginSubmit">
+        <span class="btn-label">Log in</span>
+      </button>
+    </form>
+
+    <!-- SIGNUP FORM -->
+    <form id="signupForm" class="stack-md" style="display:none;">
+      <div class="field">
+        <label for="signupName">Full name</label>
+        <input class="input" type="text" id="signupName" autocomplete="name" placeholder="Ada Lovelace" required>
+      </div>
+      <div class="field">
+        <label for="signupEmail">Email</label>
+        <input class="input" type="email" id="signupEmail" autocomplete="email" placeholder="you@example.com" required>
+      </div>
+      <div class="field">
+        <label for="signupPassword">Password</label>
+        <div class="password-wrap">
+          <input class="input" type="password" id="signupPassword" autocomplete="new-password" placeholder="At least 8 characters" required minlength="8">
+          <button type="button" class="toggle-pw" data-target="signupPassword" aria-label="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="signupConfirm">Confirm password</label>
+        <div class="password-wrap">
+          <input class="input" type="password" id="signupConfirm" autocomplete="new-password" placeholder="Re-enter your password" required minlength="8">
+          <button type="button" class="toggle-pw" data-target="signupConfirm" aria-label="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="signupSubmit">
+        <span class="btn-label">Create account</span>
+      </button>
+    </form>
+
+    <a class="back-link" href="/">← Back to the overview</a>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script>
+(function () {
+  const tabLogin = document.getElementById('tabLogin');
+  const tabSignup = document.getElementById('tabSignup');
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
+  const formTitle = document.getElementById('formTitle');
+  const formSubtitle = document.getElementById('formSubtitle');
+  const alertBox = document.getElementById('formAlert');
+  const alertText = document.getElementById('formAlertText');
+
+  // Redirect straight to the dashboard if already logged in.
+  if (Verity.getToken()) {
+    window.location.href = '/app';
+  }
+
+  function showMode(mode) {
+    const isSignup = mode === 'signup';
+    tabSignup.classList.toggle('active', isSignup);
+    tabLogin.classList.toggle('active', !isSignup);
+    signupForm.style.display = isSignup ? 'flex' : 'none';
+    loginForm.style.display = isSignup ? 'none' : 'flex';
+    formTitle.textContent = isSignup ? 'Create your account' : 'Welcome back';
+    formSubtitle.textContent = isSignup
+      ? 'Set up an account to start tracking claims.'
+      : 'Log in to keep tracking your claims.';
+    hideAlert();
+  }
+
+  tabLogin.addEventListener('click', () => showMode('login'));
+  tabSignup.addEventListener('click', () => showMode('signup'));
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('mode') === 'signup') showMode('signup');
+
+  function showAlert(message) {
+    alertText.textContent = message;
+    alertBox.classList.add('show');
+  }
+  function hideAlert() { alertBox.classList.remove('show'); }
+
+  document.querySelectorAll('.toggle-pw').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+  });
+
+  function setLoading(button, loading, label) {
+    button.disabled = loading;
+    button.querySelector('.btn-label').innerHTML = loading
+      ? '<span class="spinner"></span>'
+      : label;
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideAlert();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const submitBtn = document.getElementById('loginSubmit');
+    setLoading(submitBtn, true);
+    try {
+      const data = await Verity.api('/api/auth/login', { method: 'POST', body: { email, password }, auth: false });
+      Verity.setToken(data.token);
+      Verity.setUser(data.user);
+      window.location.href = '/app';
+    } catch (err) {
+      showAlert(err.message || 'Could not log in. Please try again.');
+    } finally {
+      setLoading(submitBtn, false, 'Log in');
+    }
+  });
+
+  signupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideAlert();
+    const name = document.getElementById('signupName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    const confirm_password = document.getElementById('signupConfirm').value;
+    const submitBtn = document.getElementById('signupSubmit');
+
+    if (password !== confirm_password) {
+      showAlert('Passwords do not match.');
+      return;
+    }
+    if (password.length < 8) {
+      showAlert('Password must be at least 8 characters long.');
+      return;
+    }
+
+    setLoading(submitBtn, true);
+    try {
+      const data = await Verity.api('/api/auth/signup', { method: 'POST', body: { name, email, password, confirm_password }, auth: false });
+      Verity.setToken(data.token);
+      Verity.setUser(data.user);
+      window.location.href = '/app';
+    } catch (err) {
+      showAlert(err.message || 'Could not create your account. Please try again.');
+    } finally {
+      setLoading(submitBtn, false, 'Create account');
+    }
+  });
+})();
+</script>
+</body>
+</html>

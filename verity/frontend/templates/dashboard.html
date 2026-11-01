@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Verity</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+<style>
+  body { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar { background: var(--ink-900); border-right: 1px solid var(--ink-800); padding: 24px 16px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+  .sb-brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 26px; }
+  .sb-brand-word { font-family: var(--font-display); font-weight: 600; font-size: 1.08rem; }
+  .sb-nav { display: flex; flex-direction: column; gap: 3px; }
+  .sb-item {
+    display: flex; align-items: center; gap: 11px; padding: 11px 12px; border-radius: 8px;
+    background: transparent; border: none; color: var(--text-ondark-muted); font-size: 0.9rem; font-weight: 500;
+    text-align: left; width: 100%; transition: background .15s, color .15s;
+  }
+  .sb-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+  .sb-item:hover { background: var(--ink-800); color: var(--text-ondark); }
+  .sb-item.active { background: var(--signal-red-soft); color: var(--signal-red); }
+  .sb-label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-ondark-muted); opacity: 0.6; padding: 14px 12px 8px; }
+  .sb-foot { margin-top: auto; border-top: 1px solid var(--ink-800); padding-top: 14px; }
+  .sb-user { display: flex; align-items: center; gap: 10px; padding: 6px 10px; margin-bottom: 4px; }
+  .sb-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--signal-red); color: #fdf6ee; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
+  .sb-user-name { font-size: 0.85rem; font-weight: 600; color: var(--text-ondark); }
+  .sb-user-email { font-size: 0.72rem; color: var(--text-ondark-muted); }
+
+  /* ---------- Main ---------- */
+  .main { padding: 36px 44px 80px; max-width: 1180px; }
+  .page { display: none; }
+  .page.active { display: block; animation: rise 0.35s var(--ease) both; }
+  .page-head { margin-bottom: 28px; }
+  .page-head h1 { font-size: 1.9rem; margin-bottom: 8px; }
+  .page-head p { color: var(--text-ondark-muted); max-width: 60ch; }
+
+  /* ---------- Overview ---------- */
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+  .active-cluster-name { font-family: var(--font-display); font-size: 1.15rem; line-height: 1.25; }
+  .active-cluster-meta { font-size: 0.76rem; color: var(--text-onpaper-muted); margin-top: 5px; }
+  .verification-legend-dot { width: 9px; height: 9px; border-radius: 50%; display:inline-block; margin-right:5px; }
+  .news-cluster { border:1px solid var(--paper-line); border-radius:10px; padding:14px; margin-top:10px; background:#fbf8f0; }
+  .news-cluster-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+  .news-cluster-title { font-weight:700; font-size:.9rem; }
+  .news-cluster-meta { font-size:.72rem; color:var(--text-onpaper-muted); margin-top:3px; }
+  .news-progress { margin-top:8px; }
+  .news-progress-track { height:5px; background:var(--paper-dim); border-radius:999px; overflow:hidden; }
+  .news-progress-fill { height:100%; width:0; background:var(--signal-red); transition:width .25s ease; }
+  .stat-doc .stat-num { font-family: var(--font-display); font-size: 2.1rem; }
+  .stat-doc .stat-label { font-size: 0.8rem; color: var(--text-onpaper-muted); margin-top: 4px; }
+  .quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .quick-action { display: block; }
+  .quick-action h3 { font-size: 1rem; margin-bottom: 6px; }
+  .quick-action p { font-size: 0.85rem; color: var(--text-onpaper-muted); }
+
+  /* ---------- Tabs (analyze: text / image) ---------- */
+  .input-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+  .input-tab { padding: 9px 18px; border-radius: 999px; border: 1px solid var(--ink-750); background: var(--ink-900); color: var(--text-ondark-muted); font-weight: 600; font-size: 0.85rem; }
+  .input-tab.active { background: var(--signal-red); border-color: transparent; color: #fdf6ee; }
+
+  .drop-zone {
+    border: 1.5px dashed var(--paper-line); border-radius: 14px; padding: 40px 24px; text-align: center; background: #fbf8f0;
+  }
+  .drop-zone.drag { border-color: var(--signal-red); background: #f6efe3; }
+  .drop-icon { width: 60px; height: 60px; margin: 0 auto 16px; border: 1.5px dashed var(--paper-line); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--signal-red); }
+  .browse-label { display: inline-flex; padding: 11px 22px; border-radius: 999px; background: var(--signal-red); color: #fdf6ee; font-weight: 600; cursor: pointer; font-size: 0.88rem; }
+  .browse-label input { display: none; }
+
+  .ocr-preview { margin-top: 16px; padding: 14px; background: var(--paper-dim); border-radius: 8px; font-size: 0.86rem; }
+  .ocr-preview .lbl { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-onpaper-muted); display: block; margin-bottom: 6px; }
+
+  /* ---------- Results ---------- */
+  .results { display: none; margin-top: 28px; }
+  .results.show { display: block; animation: rise 0.4s var(--ease) both; }
+  .result-header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+  .result-title { font-size: 1.4rem; margin-bottom: 6px; }
+  .result-meta { font-size: 0.85rem; color: var(--text-onpaper-muted); }
+  .nlp-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; margin-top: 18px; }
+  .kw-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .entity-list { display: flex; flex-direction: column; gap: 6px; }
+  .entity-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 7px 10px; background: var(--paper-dim); border-radius: 6px; }
+  .sentiment-bar-track { height: 8px; background: var(--paper-dim); border-radius: 4px; overflow: hidden; margin-top: 8px; position: relative; }
+  .sentiment-bar-fill { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--text-onpaper); }
+  .sub-head { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-onpaper-muted); margin-bottom: 10px; display: block; }
+
+  .graph-card { margin-top: 20px; }
+  .graph-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .graph-container { width: 100%; height: 420px; background: var(--ink-950); border-radius: 10px; border: 1px solid var(--ink-800); position: relative; overflow: hidden; }
+  .graph-legend { display: flex; gap: 14px; font-size: 0.75rem; color: var(--text-ondark-muted); flex-wrap: wrap; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .zoom-controls { display: flex; gap: 6px; }
+  .zoom-btn { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--ink-750); background: var(--ink-900); color: var(--text-ondark); }
+
+  .timeline-list { display: flex; flex-direction: column; margin-top: 14px; }
+  .timeline-row { display: grid; grid-template-columns: 90px 16px 1fr; gap: 12px; padding: 4px 0; cursor: pointer; border-radius: 6px; }
+  .timeline-row:hover { background: var(--paper-dim); }
+  .timeline-row.active-row { background: var(--link-blue-soft); }
+  .timeline-date { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-onpaper-muted); padding-top: 2px; }
+  .timeline-dotcol { position: relative; display: flex; justify-content: center; }
+  .timeline-dotcol::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--signal-red); margin-top: 6px; z-index: 1; }
+  .timeline-dotcol::after { content: ""; position: absolute; top: 16px; bottom: -8px; width: 1px; background: var(--paper-line); }
+  .timeline-row:last-child .timeline-dotcol::after { display: none; }
+  .timeline-text { font-size: 0.86rem; padding: 4px 0; }
+  .timeline-text .tsource { font-size: 0.74rem; color: var(--text-onpaper-muted); }
+
+  .source-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--paper-line); border-radius: 8px; margin-bottom: 8px; }
+  .source-row:last-child { margin-bottom: 0; }
+  .source-name { font-weight: 600; font-size: 0.88rem; }
+  .source-meta { font-size: 0.76rem; color: var(--text-onpaper-muted); }
+
+  /* ---------- Import ---------- */
+  .import-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  table.data-table th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--paper-line); font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; color: var(--text-onpaper-muted); }
+  table.data-table td { padding: 9px 10px; border-bottom: 1px solid var(--paper-line); vertical-align: top; }
+
+  /* ---------- News tracker ---------- */
+  .news-banner { padding: 12px 16px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 16px; display: none; }
+  .news-banner.show { display: block; }
+  .news-banner.live { background: var(--verified-green-soft); color: var(--verified-green); }
+  .news-banner.offline { background: var(--amber-soft); color: var(--amber); }
+  .article-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  .article-row { padding: 14px; border: 1px solid var(--paper-line); border-radius: 8px; }
+  .article-row h4 { font-size: 0.92rem; margin-bottom: 4px; }
+  .article-row p { font-size: 0.82rem; color: var(--text-onpaper-muted); }
+  .article-row .a-meta { font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-onpaper-muted); margin-top: 6px; }
+
+  /* ---------- History ---------- */
+  .history-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border: 1px solid var(--paper-line); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: background .15s; }
+  .history-row:hover { background: var(--paper-dim); }
+  .history-query { font-size: 0.9rem; font-weight: 500; }
+  .history-meta { font-size: 0.76rem; color: var(--text-onpaper-muted); margin-top: 3px; }
+
+  /* ---------- Empty / error / loading states ---------- */
+  .state-box { text-align: center; padding: 50px 20px; color: var(--text-onpaper-muted); }
+  .state-box svg { width: 40px; height: 40px; margin: 0 auto 14px; opacity: 0.5; }
+  .inline-error { background: var(--signal-red-soft); color: var(--signal-red); border: 1px solid rgba(184,65,44,.3); border-radius: 8px; padding: 12px 14px; font-size: 0.85rem; margin-top: 14px; display: none; }
+  .inline-error.show { display: block; }
+  .loading-row { display: flex; align-items: center; gap: 10px; color: var(--text-ondark-muted); font-size: 0.88rem; padding: 20px 0; }
+
+  @media (max-width: 900px) {
+    body { grid-template-columns: 1fr; }
+    .sidebar { position: sticky; height: auto; flex-direction: row; overflow-x: auto; padding: 12px; }
+    .sb-brand, .sb-label, .sb-foot { display: none; }
+    .sb-nav { flex-direction: row; }
+    .sb-item span:last-child { display: none; }
+    .main { padding: 22px 18px 60px; }
+    .stat-grid, .quick-actions, .nlp-grid { grid-template-columns: 1fr; }
+    .graph-toolbar { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .graph-toolbar .row.gap-sm { flex-direction: column; align-items: flex-start; gap: 12px; width: 100%; }
+    .graph-legend { gap: 10px 14px; }
+  }
+
+.verification-hero {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 24px;
+  background: var(--paper);
+  box-shadow: 0 8px 28px rgba(0,0,0,.12);
+}
+.verification-hero-label {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  letter-spacing: .14em;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.verification-hero-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 190px;
+  min-height: 52px;
+  padding: 10px 22px;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  margin-bottom: 12px;
+}
+.verification-hero .verification-explanation {
+  margin: 0;
+  font-size: .92rem;
+  line-height: 1.55;
+  max-width: 900px;
+}
+.verification-hero .verification-source-list { margin-top: 16px; }
+
+
+  /* ---------- Verity workspace: same visual language as the landing page ---------- */
+  body {
+    background: var(--ink-950);
+    color: var(--text-ondark);
+  }
+  .sidebar {
+    background: rgba(17, 20, 28, .94);
+    border-right-color: var(--ink-800);
+    box-shadow: 8px 0 30px rgba(10,12,18,.12);
+  }
+  .sb-item { transition: transform .18s var(--ease), background .18s var(--ease), color .18s var(--ease); }
+  .sb-item:hover { transform: translateX(3px); }
+  .main { max-width: 1280px; }
+  .page-head h1 { font-size: clamp(2rem, 3vw, 2.45rem); letter-spacing: -.015em; }
+  .page-head p { color: var(--text-ondark-muted); }
+  .doc { transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s var(--ease); }
+  .quick-action:hover, .doc-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); border-color: var(--paper-line); }
+  .stat-doc { animation: rise .45s var(--ease) both; }
+  .stat-doc:nth-child(2) { animation-delay: .06s; }
+  .stat-doc:nth-child(3) { animation-delay: .12s; }
+
+  /* Verification is intentionally prominent, while retaining the paper-on-ink Verity language. */
+  .verification-hero {
+    background: var(--paper);
+    color: var(--text-onpaper);
+    border: 1px solid var(--paper-line);
+    border-top: 4px solid var(--signal-red);
+    box-shadow: var(--shadow-lift);
+    padding: 26px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .verification-hero::after {
+    content: "";
+    position: absolute;
+    width: 180px; height: 180px;
+    right: -70px; top: -95px;
+    border-radius: 50%;
+    border: 1px solid var(--paper-line);
+    opacity: .55;
+    pointer-events: none;
+  }
+  .verification-hero-label {
+    color: var(--signal-red);
+    font-family: var(--font-mono);
+    font-size: .72rem;
+    letter-spacing: .14em;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .verification-hero-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 210px;
+    min-height: 58px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 1.12rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    margin-bottom: 12px;
+    border: 2px solid transparent;
+    box-shadow: 0 5px 16px rgba(10,12,18,.12);
+    animation: status-in .45s var(--ease) both;
+  }
+  @keyframes status-in { from { opacity:0; transform:scale(.96) translateY(5px); } to { opacity:1; transform:none; } }
+  .verification-hero-status.tag-green { color:#245a42; background:var(--verified-green-soft); border-color:rgba(62,122,92,.45); }
+  .verification-hero-status.tag-red { color:#8f2d20; background:var(--signal-red-soft); border-color:rgba(184,65,44,.45); }
+  .verification-hero-status.tag-amber { color:#735a16; background:var(--amber-soft); border-color:rgba(173,138,58,.48); }
+  .verification-hero-status.tag-neutral { color:var(--text-onpaper); background:var(--paper-dim); border-color:var(--paper-line); }
+  .verification-hero .verification-explanation { color:var(--text-onpaper-muted); max-width:900px; line-height:1.6; }
+  .verification-section-title { color:var(--text-onpaper); font-family:var(--font-display); font-size:1.18rem; margin:22px 0 10px; }
+  .verification-note { color:var(--text-onpaper-muted); font-size:.82rem; line-height:1.5; margin-top:8px; }
+  .evidence-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+  .evidence-card { border:1px solid var(--paper-line); border-radius:10px; padding:16px; background:var(--paper-dim); }
+  .evidence-card h4 { color:var(--text-onpaper); font-family:var(--font-body); font-size:.84rem; margin-bottom:5px; }
+  .evidence-card p { color:var(--text-onpaper-muted); font-size:.77rem; }
+  .evidence-item { padding:10px 0; border-top:1px solid var(--paper-line); }
+  .evidence-item:first-child { border-top:0; }
+  .evidence-item a { color:var(--link-blue); font-weight:650; font-size:.82rem; }
+  .evidence-item .meta { color:var(--text-onpaper-muted); font-size:.7rem; margin-top:3px; }
+  .verification-source-list .source-row { background:var(--paper-dim); border-color:var(--paper-line); }
+  .verification-source-list .source-name { color:var(--text-onpaper); }
+  .verification-source-list .source-meta { color:var(--text-onpaper-muted); }
+  .news-progress-fill { animation: progress-shimmer 1.2s linear infinite; background:var(--signal-red); background-size:28px 28px; background-image:linear-gradient(135deg, rgba(255,255,255,.16) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.16) 50%, rgba(255,255,255,.16) 75%, transparent 75%); }
+  @keyframes progress-shimmer { to { background-position:28px 0; } }
+  @media (max-width: 760px) { .evidence-grid { grid-template-columns:1fr; } .verification-hero { padding:22px 20px; } .verification-hero-status { min-width:0; width:100%; } }
+
+
+</style>
+
+<style>
+/* =====================================================================
+   VERITY WORKSPACE REDESIGN — authenticated UI only
+   Landing page is intentionally untouched. This makes the app feel like
+   the same editorial/research product after authentication.
+   ===================================================================== */
+body { 
+  grid-template-columns: 292px minmax(0,1fr) !important;
+  background:
+    radial-gradient(circle at 82% 8%, rgba(184,65,44,.055), transparent 28%),
+    linear-gradient(180deg, #11141c 0%, #121721 100%) !important;
+}
+.sidebar {
+  padding: 28px 20px 22px !important;
+  background: rgba(17,20,28,.97) !important;
+  border-right: 1px solid #2a3245 !important;
+  position: sticky !important;
+}
+.sb-brand {
+  padding: 8px 10px 24px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--ink-800);
+}
+.sb-brand-word { font-size: 1.45rem !important; letter-spacing: -.02em; }
+.sb-label {
+  padding: 0 10px !important;
+  font-size: .66rem !important;
+  letter-spacing: .18em !important;
+  color: #707a92 !important;
+}
+.sb-nav { gap: 5px !important; }
+.sb-item {
+  min-height: 48px !important;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  color: #a8b0c2 !important;
+  border: 1px solid transparent !important;
+  transition: transform .22s var(--ease), background .22s var(--ease), color .22s var(--ease), border-color .22s var(--ease) !important;
+}
+.sb-item svg { width: 20px !important; height: 20px !important; }
+.sb-item:hover { background: #1a2030 !important; color: #eee8dc !important; transform: translateX(4px) !important; }
+.sb-item.active {
+  background: rgba(184,65,44,.12) !important;
+  color: #f2ece0 !important;
+  border-color: rgba(184,65,44,.28) !important;
+  box-shadow: inset 3px 0 0 var(--signal-red);
+}
+.sb-foot { border-top: 1px solid var(--ink-800); padding-top: 16px; }
+.sb-user { gap: 11px !important; }
+.sb-avatar { background: var(--signal-red) !important; color: #fff7ef !important; }
+
+.main {
+  width: 100%;
+  max-width: none !important;
+  padding: 24px clamp(24px, 4vw, 64px) 80px !important;
+  position: relative;
+  overflow: hidden;
+}
+.main::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 0 292px;
+  pointer-events: none;
+  opacity: .18;
+  background-image: linear-gradient(rgba(242,236,224,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(242,236,224,.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+}
+.workspace-topbar {
+  height: 46px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom: 34px;
+  position: relative;
+  z-index: 2;
+  border-bottom: 1px solid rgba(242,236,224,.09);
+}
+.workspace-mark, .workspace-status {
+  font-family: var(--font-mono);
+  font-size: .66rem;
+  letter-spacing: .12em;
+  color: #747e96;
+}
+.workspace-mark { display:flex; align-items:center; gap:9px; }
+.workspace-dot { width:7px; height:7px; border-radius:50%; background:var(--signal-red); box-shadow:0 0 0 4px rgba(184,65,44,.12); }
+.workspace-status { display:flex; align-items:center; gap:8px; }
+.status-pulse { width:6px; height:6px; border-radius:50%; background:var(--verified-green); animation: workspace-pulse 2s ease-in-out infinite; }
+@keyframes workspace-pulse { 50% { opacity:.35; transform:scale(.7); } }
+
+.page { position:relative; z-index:1; }
+.page.active { animation: page-reveal .42s var(--ease) both; }
+@keyframes page-reveal { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+.page-head {
+  margin-bottom: 30px !important;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(242,236,224,.1);
+}
+.page-head h1 {
+  font-size: clamp(2.35rem, 4vw, 3.7rem) !important;
+  letter-spacing: -.025em !important;
+  line-height: 1 !important;
+  margin-bottom: 12px !important;
+}
+.page-head p { max-width: 70ch !important; font-size: .94rem !important; }
+
+/* Overview: editorial dashboard rather than three generic stat boxes */
+#page-overview .page-head { border-bottom:0; padding-bottom:0; margin-bottom:24px !important; }
+#page-overview .stat-grid {
+  grid-template-columns: 1fr 1fr 1.45fr !important;
+  gap: 14px !important;
+  margin-bottom: 14px;
+}
+#page-overview .stat-doc {
+  min-height: 150px;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  overflow:hidden;
+}
+#page-overview .stat-doc:nth-child(1)::after,
+#page-overview .stat-doc:nth-child(2)::after {
+  content:""; position:absolute; width:90px; height:90px; right:-25px; top:-25px; border:1px solid var(--paper-line); border-radius:50%; opacity:.5;
+}
+#page-overview .stat-num { font-size:3rem !important; line-height:1 !important; }
+#page-overview .quick-actions {
+  grid-template-columns: 1.2fr 1fr 1fr !important;
+  gap:14px !important;
+}
+#page-overview .quick-action {
+  min-height: 190px;
+  padding: 26px !important;
+  display:flex !important;
+  flex-direction:column;
+  justify-content:flex-end;
+  position:relative;
+  overflow:hidden;
+}
+#page-overview .quick-action::before {
+  content:"→";
+  position:absolute; right:22px; top:20px;
+  font-family:var(--font-mono); font-size:1.1rem; color:var(--signal-red);
+  transition:transform .25s var(--ease);
+}
+#page-overview .quick-action:hover::before { transform:translateX(5px); }
+#page-overview .quick-action h3 { font-size:1.35rem !important; }
+
+/* All paper cards get a more deliberate editorial surface */
+.doc {
+  border: 1px solid rgba(217,207,184,.72);
+  box-shadow: 0 8px 24px rgba(5,8,13,.20), 0 1px 2px rgba(5,8,13,.3) !important;
+}
+.doc:hover { border-color: #cbbd9f; }
+
+/* Analyze input becomes a clear workspace */
+#page-analyze .input-tabs, #page-import .import-tabs { margin-bottom:12px; }
+.input-tab { transition:all .22s var(--ease) !important; }
+#page-analyze .doc:first-of-type { padding:32px !important; }
+#claimTextInput { min-height:190px; font-family:var(--font-display); font-size:1.18rem; line-height:1.65; }
+
+/* Results */
+.result-header-doc { padding:32px !important; }
+.result-title { font-size:clamp(1.45rem,2.2vw,2rem) !important; line-height:1.3 !important; }
+.verification-hero {
+  transform: translateZ(0);
+  border-top-width:5px !important;
+  border-radius:4px 4px 18px 18px !important;
+}
+.verification-hero-status {
+  font-size:1.2rem !important;
+  min-height:64px !important;
+  padding:14px 28px !important;
+  box-shadow:0 8px 22px rgba(10,12,18,.14) !important;
+}
+
+/* News becomes a research board */
+#page-news .doc:first-of-type { padding:26px !important; }
+#newsQueryInput { font-size:1rem; height:50px; }
+#page-news .article-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+#page-news .article-row {
+  background:var(--paper-dim); min-height:145px; padding:18px; transition:transform .22s var(--ease), box-shadow .22s var(--ease);
+}
+#page-news .article-row:hover { transform:translateY(-3px); box-shadow:var(--shadow-doc); }
+#page-news .graph-card { padding:24px !important; }
+#page-news .graph-container { height:540px !important; }
+
+/* History is a clean case-file index */
+#historyList { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+#historyList .history-row { margin:0 !important; min-height:90px; background:var(--paper); }
+
+/* Import */
+#page-import .drop-zone, #page-analyze .drop-zone {
+  min-height:270px; display:flex; flex-direction:column; justify-content:center; align-items:center;
+  transition:border-color .2s var(--ease), background .2s var(--ease), transform .2s var(--ease);
+}
+#page-import .drop-zone:hover, #page-analyze .drop-zone:hover { transform:translateY(-2px); border-color:var(--signal-red); }
+
+@media (max-width: 1050px) {
+  body { grid-template-columns: 230px minmax(0,1fr) !important; }
+  .main::before { inset: 0 0 0 230px; }
+  #page-overview .stat-grid, #page-overview .quick-actions { grid-template-columns:1fr 1fr !important; }
+  #page-overview .stat-doc:last-child { grid-column:1 / -1; }
+}
+@media (max-width: 900px) {
+  body { grid-template-columns:1fr !important; }
+  .main::before { inset:0; }
+  .workspace-topbar { margin-bottom:22px; }
+  #page-news .article-list, #historyList { grid-template-columns:1fr !important; }
+}
+</style>
+
+</head>
+<body>
+
+<aside class="sidebar">
+  <a class="sb-brand" href="/">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="7" fill="#B8412C"/><path d="M9 10.5 16 22 23 10.5" stroke="#F2ECE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="sb-brand-word">Verity</span>
+  </a>
+
+  <span class="sb-label">Workspace</span>
+  <nav class="sb-nav">
+    <button class="sb-item active" data-page="overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/></svg><span>Overview</span>
+    </button>
+    <button class="sb-item" data-page="analyze">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.5" cy="10.5" r="6.2"/><path d="M20 20l-4.8-4.8"/></svg><span>Analyze claim</span>
+    </button>
+    <button class="sb-item" data-page="import">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V5"/><path d="M7.5 9.5 12 5l4.5 4.5"/><path d="M5 16.5V19h14v-2.5"/></svg><span>Import data</span>
+    </button>
+    <button class="sb-item" data-page="news">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg><span>News tracker</span>
+    </button>
+    <button class="sb-item" data-page="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>History</span>
+    </button>
+  </nav>
+
+  <div class="sb-foot">
+    <div class="sb-item" style="cursor:default;" id="profileToggle">
+      <div class="sb-user" style="padding:0; flex:1;">
+        <div class="sb-avatar" id="userAvatar">?</div>
+        <div>
+          <div class="sb-user-name" id="userName">—</div>
+          <div class="sb-user-email" id="userEmail">—</div>
+        </div>
+      </div>
+    </div>
+    <button class="sb-item" id="logoutBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M9 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg><span>Log out</span>
+    </button>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="workspace-topbar">
+    <div class="workspace-mark"><span class="workspace-dot"></span><span>VERITY / RESEARCH DESK</span></div>
+    <div class="workspace-status"><span class="status-pulse"></span><span>LOCAL WORKSPACE</span></div>
+  </div>
+
+  <!-- ============ OVERVIEW ============ -->
+  <section class="page active" id="page-overview">
+    <div class="page-head">
+      <h1 id="overviewGreeting">Welcome back</h1>
+      <p>Track a claim, import a dataset, or pull in live news — everything you analyze feeds the same evolving graph.</p>
+    </div>
+
+    <div class="stat-grid">
+      <div class="doc stat-doc"><div class="stat-num" id="statSearches">–</div><div class="stat-label">Your searches</div></div>
+      <div class="doc stat-doc"><div class="stat-num" id="statClaims">–</div><div class="stat-label">Claims tracked (all users)</div></div>
+      <div class="doc stat-doc"><div class="active-cluster-name" id="activeClusterName">No active cluster yet</div><div class="active-cluster-meta" id="activeClusterMeta">Your last 7 days of activity will appear here.</div></div>
+    </div>
+
+    <div class="quick-actions">
+      <a class="doc quick-action" href="#" data-nav="analyze"><h3>Analyze a claim</h3><p>Paste text or upload a screenshot to trace its narrative.</p></a>
+      <a class="doc quick-action" href="#" data-nav="import"><h3>Import a dataset</h3><p>Upload a CSV or text file of claims to analyze in batch.</p></a>
+      <a class="doc quick-action" href="#" data-nav="news"><h3>Track a news topic</h3><p>Pull recent coverage of a topic and see how it's evolving.</p></a>
+    </div>
+  </section>
+
+  <!-- ============ ANALYZE ============ -->
+  <section class="page" id="page-analyze">
+    <div class="page-head">
+      <h1>Analyze a claim</h1>
+      <p>Paste text or upload a screenshot. Verity runs it through NLP and compares it against every claim already tracked.</p>
+    </div>
+
+    <div class="input-tabs">
+      <button class="input-tab active" data-input="text">Text</button>
+      <button class="input-tab" data-input="image">Image</button>
+    </div>
+
+    <div id="textInputPanel">
+      <div class="doc">
+        <div class="field">
+          <label for="claimTextInput">Paste an article, claim, or headline</label>
+          <textarea class="input" id="claimTextInput" rows="5" placeholder="e.g. New reports claim the vaccine causes infertility in young women..."></textarea>
+        </div>
+        <div class="row-between" style="margin-top:14px;">
+          <span class="result-meta on-paper" id="textCharCount">0 / 8000 characters</span>
+          <button class="btn btn-primary" id="analyzeTextBtn"><span class="btn-label">Analyze claim</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="imageInputPanel" style="display:none;">
+      <div class="drop-zone" id="imageDropZone">
+        <div class="drop-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V5"/><path d="M7.5 9.5 12 5l4.5 4.5"/><path d="M5 16.5V19h14v-2.5"/></svg>
+        </div>
+        <h3 class="on-paper" style="margin-bottom:6px;">Drop a screenshot here</h3>
+        <p class="muted" style="margin-bottom:18px; font-size:0.85rem;">or choose a PNG, JPG, or WEBP file — max 8 MB</p>
+        <label class="browse-label">Choose image<input type="file" id="imageFileInput" accept=".png,.jpg,.jpeg,.webp"></label>
+      </div>
+      <div id="imagePreviewBox" style="display:none;" class="doc" style="margin-top:16px;">
+        <div class="row-between">
+          <span class="result-meta on-paper" id="imageFileName">—</span>
+          <button class="btn btn-ghost-onpaper btn-sm" id="imageClearBtn">Remove</button>
+        </div>
+        <img id="imagePreviewThumb" style="max-width:100%; border-radius:8px; margin-top:12px; max-height:220px; object-fit:contain;">
+        <button class="btn btn-primary btn-block" id="analyzeImageBtn" style="margin-top:16px;"><span class="btn-label">Extract text &amp; analyze</span></button>
+      </div>
+    </div>
+
+    <div class="inline-error" id="analyzeError"></div>
+    <div class="loading-row" id="analyzeLoading" style="display:none;"><span class="spinner"></span> Running NLP analysis…</div>
+
+    <div class="results" id="analyzeResults"></div>
+  </section>
+
+  <!-- ============ IMPORT ============ -->
+  <section class="page" id="page-import">
+    <div class="page-head">
+      <h1>Import a dataset</h1>
+      <p>Upload a CSV (columns: <code>claim</code>, <code>source</code>, <code>date</code>) or a plain text file with one claim per line.</p>
+    </div>
+
+    <div class="import-tabs">
+      <button class="input-tab active" data-format="csv">CSV</button>
+      <button class="input-tab" data-format="text">Text (.txt)</button>
+    </div>
+
+    <div class="drop-zone" id="datasetDropZone">
+      <div class="drop-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V5"/><path d="M7.5 9.5 12 5l4.5 4.5"/><path d="M5 16.5V19h14v-2.5"/></svg>
+      </div>
+      <h3 class="on-paper" id="datasetDropTitle" style="margin-bottom:6px;">Drop your CSV here</h3>
+      <p class="muted" id="datasetDropSub" style="margin-bottom:18px; font-size:0.85rem;">or choose a file from your computer</p>
+      <label class="browse-label">Choose file<input type="file" id="datasetFileInput" accept=".csv,text/csv"></label>
+    </div>
+
+    <div class="doc" id="datasetPreviewBox" style="display:none; margin-top:18px;">
+      <div class="row-between">
+        <span class="result-meta on-paper" id="datasetFileName">—</span>
+        <button class="btn btn-ghost-onpaper btn-sm" id="datasetClearBtn">Remove</button>
+      </div>
+      <div style="overflow-x:auto; margin-top:14px;" id="datasetPreviewTable"></div>
+      <button class="btn btn-primary btn-block" id="datasetAnalyzeBtn" style="margin-top:16px;"><span class="btn-label">Analyze dataset</span></button>
+    </div>
+
+    <div class="inline-error" id="datasetError"></div>
+    <div class="loading-row" id="datasetLoading" style="display:none;"><span class="spinner"></span> Analyzing dataset…</div>
+
+    <div class="doc" id="datasetSummaryBox" style="display:none; margin-top:18px;">
+      <span class="sub-head">Dataset analysis</span>
+      <div class="stat-grid" style="margin-bottom:18px;">
+        <div><div class="stat-num" id="dsCount" style="font-family:var(--font-display); font-size:1.8rem;">0</div><div class="stat-label">Claims analyzed</div></div>
+        <div><div class="stat-num" id="dsRelated" style="font-family:var(--font-display); font-size:1.8rem;">0</div><div class="stat-label">Related to a known narrative</div></div>
+        <div><div class="stat-num" id="dsClusters" style="font-family:var(--font-display); font-size:1.8rem;">0</div><div class="stat-label">Clusters touched</div></div>
+      </div>
+      <div style="overflow-x:auto;" id="datasetResultsTable"></div>
+    </div>
+  </section>
+
+  <!-- ============ NEWS TRACKER ============ -->
+  <section class="page" id="page-news">
+    <div class="page-head">
+      <h1>Track a news topic</h1>
+      <p>Search a topic to pull recent coverage and see it linked into the evolution graph.</p>
+    </div>
+
+    <div class="doc">
+      <div class="field">
+        <label for="newsQueryInput">Topic or keyword</label>
+        <div class="row gap-sm">
+          <input class="input" id="newsQueryInput" placeholder="e.g. election fraud, vaccine safety, climate change">
+          <button class="btn btn-primary" id="newsTrackBtn" style="flex-shrink:0;"><span class="btn-label">Track topic</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="inline-error" id="newsError"></div>
+    <div class="loading-row" id="newsLoading" style="display:none;">
+      <span class="spinner"></span><div style="flex:1;"><div id="newsLoadingText">Fetching articles…</div><div class="news-progress"><div class="news-progress-track"><div class="news-progress-fill" id="newsProgressFill"></div></div></div></div>
+    </div>
+
+    <div id="newsResults" style="display:none; margin-top:20px;">
+      <div class="news-banner" id="newsBanner"></div>
+      <div class="doc">
+        <span class="sub-head">Recent articles</span>
+        <div class="article-list" id="articleList"></div>
+      </div>
+      <div class="doc graph-card">
+        <div class="graph-toolbar">
+          <span class="sub-head" style="margin:0;">Topic evolution graph</span>
+          <div class="zoom-controls">
+            <button class="zoom-btn" id="newsZoomOut">−</button>
+            <button class="zoom-btn" id="newsZoomReset">⟲</button>
+            <button class="zoom-btn" id="newsZoomIn">+</button>
+          </div>
+        </div>
+        <div class="graph-container" id="newsGraphContainer"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HISTORY ============ -->
+  <section class="page" id="page-history">
+    <div class="page-head">
+      <h1>Search history</h1>
+      <p>Everything you've analyzed, most recent first. Click any entry to reopen its results.</p>
+    </div>
+    <div id="historyList"></div>
+    <div class="results" id="historyResults"></div>
+  </section>
+
+</main>
+
+<!-- Shared result template (cloned by app.js) -->
+<template id="resultTemplate">
+  <div class="doc result-header-doc">
+    <div class="result-header">
+      <div>
+        <h2 class="result-title on-paper claim-text"></h2>
+        <div class="result-meta on-paper claim-meta"></div>
+      </div>
+      <span class="tag tag-red narrative-badge"></span>
+    </div>
+    <div class="nlp-grid">
+      <div>
+        <span class="sub-head">Keywords</span>
+        <div class="kw-list"></div>
+        <span class="sub-head" style="margin-top:16px;">Named entities</span>
+        <div class="entity-list"></div>
+      </div>
+      <div>
+        <span class="sub-head">Sentiment</span>
+        <div class="sentiment-box">
+          <div class="row-between"><span class="on-paper" style="font-size:0.85rem;">Polarity</span><span><span class="polarity-label tag tag-neutral" style="margin-right:6px;"></span><span class="polarity-val t-mono on-paper" style="font-family:var(--font-mono);"></span></span></div>
+          <div class="sentiment-bar-track"><div class="sentiment-bar-fill polarity-bar"></div></div>
+          <div class="row-between" style="margin-top:14px;"><span class="on-paper" style="font-size:0.85rem;">Subjectivity</span><span class="subjectivity-val t-mono on-paper" style="font-family:var(--font-mono);"></span></div>
+          <div class="sentiment-bar-track"><div class="sentiment-bar-fill subjectivity-bar" style="background:var(--link-blue);"></div></div>
+        </div>
+        <span class="sub-head" style="margin-top:16px;">Narrative match</span>
+        <p class="best-match-text on-paper" style="font-size:0.85rem;"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="verification-hero" style="margin-top:20px;">
+    <div class="verification-hero-label">CLAIM VERIFICATION</div>
+    <div class="verification-hero-status verification-badge"></div>
+    <p class="verification-explanation"></p>
+    <div class="verification-source-list"></div>
+    <div class="verification-section-title">What this status means</div>
+    <p class="verification-note">Fact-check status comes from independent fact-check reviews. News coverage is shown separately as reporting context and is not treated as proof by itself.</p>
+    <div class="evidence-grid">
+      <div class="evidence-card">
+        <h4>🔎 Independent fact checks</h4>
+        <p class="factcheck-context">No independent review found.</p>
+      </div>
+      <div class="evidence-card">
+        <h4>📰 Recent news coverage</h4>
+        <div class="news-evidence-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc graph-card">
+    <div class="graph-toolbar">
+      <span class="sub-head" style="margin:0;">Evolution graph</span>
+      <div class="row gap-sm">
+        <div class="graph-legend">
+          <span><span class="verification-legend-dot" style="background:#3b8c5a;"></span>Supported</span>
+          <span><span class="verification-legend-dot" style="background:#c0392b;"></span>Contradicted</span>
+          <span><span class="verification-legend-dot" style="background:#b27b16;"></span>Mixed</span>
+          <span><span class="verification-legend-dot" style="background:#7d8190;"></span>Unverified</span>
+        </div>
+        <div class="zoom-controls">
+          <button class="zoom-btn zoom-out-btn">−</button>
+          <button class="zoom-btn zoom-reset-btn">⟲</button>
+          <button class="zoom-btn zoom-in-btn">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="graph-container"></div>
+  </div>
+
+  <div class="doc" style="margin-top:20px;">
+    <span class="sub-head">Narrative timeline</span>
+    <div class="timeline-list"></div>
+  </div>
+
+</template>
+
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/graph.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

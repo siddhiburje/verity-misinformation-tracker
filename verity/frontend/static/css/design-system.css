@@ -1,0 +1,224 @@
+/* ==========================================================================
+   VERITY — DESIGN SYSTEM
+   Concept: an investigator's case file. Claims are documents — paper
+   cards with a deckle-edge accent — laid out on a dark ink desk. Ink-blue
+   dominates the shell (chrome, backgrounds); paper is reserved for the
+   claims/content themselves. Annotation colors (signal red / verified
+   green) mark how a claim has been assessed, the way an editor marks a
+   manuscript.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* --- Ink (dark, dominant shell) --- */
+  --ink-950: #11141c;
+  --ink-900: #151a25;
+  --ink-850: #1a2030;
+  --ink-800: #1f2635;
+  --ink-750: #2a3245;
+  --ink-650: #3a4359;
+
+  /* --- Paper (documents / content surfaces) --- */
+  --paper: #f2ece0;
+  --paper-dim: #e8e0cf;
+  --paper-line: #d9cfb8;
+
+  /* --- Text --- */
+  --text-onpaper: #21232b;
+  --text-onpaper-muted: #6b6555;
+  --text-ondark: #e9e4d6;
+  --text-ondark-muted: #96a0b8;
+
+  /* --- Annotation / signal colors --- */
+  --signal-red: #b8412c;
+  --signal-red-soft: rgba(184, 65, 44, 0.14);
+  --verified-green: #3e7a5c;
+  --verified-green-soft: rgba(62, 122, 92, 0.14);
+  --link-blue: #5b7fc7;
+  --link-blue-soft: rgba(91, 127, 199, 0.16);
+  --amber: #ad8a3a;
+  --amber-soft: rgba(173, 138, 58, 0.16);
+
+  /* --- Type --- */
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+
+  /* --- Shape / elevation --- */
+  --radius-doc: 4px 4px 14px 14px;   /* documents: sharp top, soft bottom */
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+  --shadow-doc: 0 1px 2px rgba(10, 12, 18, 0.3), 0 12px 28px rgba(10, 12, 18, 0.28);
+  --shadow-lift: 0 2px 4px rgba(10, 12, 18, 0.35), 0 20px 44px rgba(10, 12, 18, 0.36);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--ink-950);
+  color: var(--text-ondark);
+  font: 15px/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); color: var(--text-ondark); font-weight: 600; margin: 0; line-height: 1.15; }
+p { margin: 0; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; cursor: pointer; }
+img, svg { display: block; max-width: 100%; }
+::selection { background: var(--signal-red-soft); }
+
+:focus-visible {
+  outline: 2px solid var(--link-blue);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* --- Type scale --- */
+.t-display-1 { font-size: clamp(2.6rem, 4.4vw, 4.1rem); font-weight: 600; letter-spacing: -0.01em; }
+.t-display-2 { font-size: clamp(2rem, 2.8vw, 2.6rem); font-weight: 600; letter-spacing: -0.01em; }
+.t-title    { font-size: 1.5rem; font-weight: 600; }
+.t-subtitle { font-size: 1.05rem; font-weight: 500; color: var(--text-ondark-muted); }
+.t-body     { font-size: 0.98rem; line-height: 1.65; color: var(--text-ondark-muted); max-width: 62ch; }
+.t-mono     { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.01em; }
+
+.on-paper { color: var(--text-onpaper); }
+.on-paper .t-body, .on-paper .muted { color: var(--text-onpaper-muted); }
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 0.92rem;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease), background 0.15s var(--ease), border-color .15s var(--ease);
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  background: var(--signal-red);
+  color: #fdf6ee;
+  box-shadow: 0 8px 20px rgba(184, 65, 44, 0.32);
+}
+.btn-primary:hover { background: #a43926; box-shadow: 0 10px 24px rgba(184, 65, 44, 0.4); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-ink {
+  background: var(--ink-800);
+  color: var(--text-ondark);
+  border-color: var(--ink-650);
+}
+.btn-ink:hover { background: var(--ink-750); border-color: var(--link-blue); }
+.btn-ghost-onpaper {
+  background: transparent;
+  border-color: var(--paper-line);
+  color: var(--text-onpaper);
+}
+.btn-ghost-onpaper:hover { background: var(--paper-dim); }
+.btn-block { width: 100%; }
+.btn-sm { height: 38px; padding: 0 16px; font-size: 0.85rem; }
+
+/* --- Inputs --- */
+.field { display: flex; flex-direction: column; gap: 7px; }
+.field label { font-size: 0.82rem; font-weight: 600; color: var(--text-onpaper); }
+.input, textarea.input {
+  width: 100%;
+  border: 1px solid var(--paper-line);
+  background: #fbf8f0;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font: 0.95rem/1.4 var(--font-body);
+  color: var(--text-onpaper);
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.input:focus, textarea.input:focus {
+  outline: none;
+  border-color: var(--link-blue);
+  box-shadow: 0 0 0 3px var(--link-blue-soft);
+}
+.input::placeholder { color: #a49c86; }
+.field-error { font-size: 0.78rem; color: var(--signal-red); font-weight: 500; min-height: 1em; }
+
+/* --- Document (the core content unit: a "claim card") --- */
+.doc {
+  position: relative;
+  background: var(--paper);
+  color: var(--text-onpaper);
+  border-radius: var(--radius-doc);
+  box-shadow: var(--shadow-doc);
+  padding: 26px;
+}
+.doc::before {
+  /* deckle-edge accent strip along the top */
+  content: "";
+  position: absolute;
+  top: 0; left: 18px; right: 18px;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, var(--paper-line) 0 6px, transparent 6px 10px);
+  border-radius: 0 0 3px 3px;
+}
+.doc-lift { box-shadow: var(--shadow-lift); }
+.doc h1, .doc h2, .doc h3, .doc h4 { color: var(--text-onpaper); }
+
+/* --- Small pill / tag --- */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid;
+}
+.tag-red { color: var(--signal-red); border-color: rgba(184,65,44,.35); background: var(--signal-red-soft); }
+.tag-green { color: var(--verified-green); border-color: rgba(62,122,92,.35); background: var(--verified-green-soft); }
+.tag-blue { color: var(--link-blue); border-color: rgba(91,127,199,.35); background: var(--link-blue-soft); }
+.tag-amber { color: var(--amber); border-color: rgba(173,138,58,.35); background: var(--amber-soft); }
+.tag-neutral { color: var(--text-onpaper-muted); border-color: var(--paper-line); background: transparent; }
+
+/* --- Scrollbar (subtle, on dark) --- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ink-750); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-650); }
+
+/* --- Utility --- */
+.stack-xs > * + * { margin-top: 8px; }
+.stack-sm > * + * { margin-top: 14px; }
+.stack-md > * + * { margin-top: 24px; }
+.stack-lg > * + * { margin-top: 48px; }
+.row { display: flex; align-items: center; }
+.row-between { display: flex; align-items: center; justify-content: space-between; }
+.wrap { flex-wrap: wrap; }
+.gap-xs { gap: 8px; } .gap-sm { gap: 14px; } .gap-md { gap: 22px; }
+.container { max-width: 1160px; margin: 0 auto; padding: 0 32px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: currentColor;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Simple one-shot entrance, used sparingly (not on every card) */
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.enter { animation: rise 0.5s var(--ease) both; }
+
+@media (max-width: 760px) {
+  .container { padding: 0 18px; }
+  .doc { padding: 20px; }
+}
